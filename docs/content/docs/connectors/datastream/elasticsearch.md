@@ -50,6 +50,10 @@ of the Elasticsearch installation:
         <td>7.x</td>
         <td>{{< connector_artifact flink-connector-elasticsearch7 elastic >}}</td>
     </tr>
+    <tr>
+        <td>8.x</td>
+        <td>{{< connector_artifact flink-connector-elasticsearch8 elastic >}}</td>
+    </tr>
   </tbody>
 </table>
 
@@ -140,6 +144,38 @@ private static IndexRequest createIndexRequest(String element) {
         .source(json);
 }
 ```
+
+Elasticsearch 8:
+```java
+import co.elastic.clients.elasticsearch.core.bulk.IndexOperation;
+import org.apache.flink.connector.elasticsearch.sink.Elasticsearch8AsyncSinkBuilder;
+import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.http.HttpHost;
+
+import java.util.HashMap;
+import java.util.Map;
+
+DataStream<String> input = ...;
+
+input.sinkTo(
+  Elasticsearch8AsyncSinkBuilder.<String>builder()
+    .setMaxBatchSize(5)
+    .setHosts(new HttpHost("127.0.0.1", 9200))
+    .setElementConverter((element, context) -> createIndexOperation(element))
+    .build());
+
+private static IndexOperation<Map<String, Object>> createIndexOperation(String element) {
+    Map<String, Object> json = new HashMap<>();
+    json.put("data", element);
+
+    return new IndexOperation.Builder<Map<String, Object>>()
+            .index("my-index")
+            .id(element)
+            .document(json)
+            .build();
+}
+```
+
 {{< /tab >}}
 {{< tab "Scala" >}}
 Elasticsearch 6:
@@ -197,6 +233,38 @@ def createIndexRequest(element: (String)): IndexRequest = {
   )
 
   Requests.indexRequest.index("my-index").source(mapAsJavaMap(json))
+}
+```
+
+Elasticsearch 8:
+```scala
+import co.elastic.clients.elasticsearch.core.bulk.IndexOperation
+import org.apache.flink.api.connector.sink2.SinkWriter
+import org.apache.flink.connector.elasticsearch.sink.Elasticsearch8AsyncSinkBuilder
+import org.apache.flink.streaming.api.scala.DataStream
+import org.apache.http.HttpHost
+
+import scala.collection.JavaConverters._
+
+val input: DataStream[String] = ...
+
+input.sinkTo(
+  Elasticsearch8AsyncSinkBuilder.builder()
+    .setMaxBatchSize(5)
+    .setHosts(new HttpHost("127.0.0.1", 9200))
+    .setElementConverter((element: String, context: SinkWriter.Context) => createIndexOperation(element))
+    .build())
+
+def createIndexOperation(element: String): IndexOperation[java.util.Map[String, Object]] = {
+  val json = Map(
+    "data" -> element.asInstanceOf[AnyRef]
+  )
+
+  new IndexOperation.Builder[java.util.Map[String, Object]]()
+    .index("my-index")
+    .id(element)
+    .document(mapAsJavaMap(json))
+    .build()
 }
 ```
 
@@ -473,7 +541,7 @@ More information about Elasticsearch can be found [here](https://elastic.co).
 
 For the execution of your Flink program, it is recommended to build a
 so-called uber-jar (executable jar) containing all your dependencies
-(see [here]({{< ref "docs/dev/configuration" >}}) for further information).
+(see [here]({{< ref "docs/dev/configuration/overview/#running-and-packagin" >}}) for further information).
 
 Alternatively, you can put the connector's jar file into Flink's `lib/` folder to make it available
 system-wide, i.e. for all job being run.
