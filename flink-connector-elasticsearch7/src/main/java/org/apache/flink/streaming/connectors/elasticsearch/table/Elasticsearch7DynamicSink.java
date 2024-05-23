@@ -37,7 +37,9 @@ import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
+import org.apache.http.conn.ssl.TrustAllStrategy;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.ssl.SSLContexts;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.update.UpdateRequest;
@@ -46,6 +48,9 @@ import org.elasticsearch.common.xcontent.XContentType;
 
 import javax.annotation.Nullable;
 
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
@@ -167,10 +172,12 @@ final class Elasticsearch7DynamicSink implements DynamicTableSink {
                         new AuthRestClientFactory(
                                 config.getPathPrefix().orElse(null),
                                 config.getUsername().get(),
-                                config.getPassword().get()));
+                                config.getPassword().get(),
+                                config.isAllowInsecure()));
             } else {
                 builder.setRestClientFactory(
-                        new DefaultRestClientFactory(config.getPathPrefix().orElse(null)));
+                        new DefaultRestClientFactory(
+                                config.getPathPrefix().orElse(null), config.isAllowInsecure()));
             }
 
             final ElasticsearchSink<RowData> sink = builder.build();
@@ -198,15 +205,33 @@ final class Elasticsearch7DynamicSink implements DynamicTableSink {
     static class DefaultRestClientFactory implements RestClientFactory {
 
         private final String pathPrefix;
+        private final boolean allowInsure;
 
-        public DefaultRestClientFactory(@Nullable String pathPrefix) {
+        public DefaultRestClientFactory(@Nullable String pathPrefix, boolean allowInsure) {
             this.pathPrefix = pathPrefix;
+            this.allowInsure = allowInsure;
         }
 
         @Override
         public void configureRestClientBuilder(RestClientBuilder restClientBuilder) {
             if (pathPrefix != null) {
                 restClientBuilder.setPathPrefix(pathPrefix);
+            }
+            if (allowInsure) {
+                restClientBuilder.setHttpClientConfigCallback(
+                        httpClientBuilder -> {
+                            try {
+                                return httpClientBuilder.setSSLContext(
+                                        SSLContexts.custom()
+                                                .loadTrustMaterial(TrustAllStrategy.INSTANCE)
+                                                .build());
+                            } catch (final NoSuchAlgorithmException
+                                    | KeyStoreException
+                                    | KeyManagementException ex) {
+                                throw new IllegalStateException(
+                                        "Unable to create custom SSL context", ex);
+                            }
+                        });
             }
         }
 
@@ -236,12 +261,17 @@ final class Elasticsearch7DynamicSink implements DynamicTableSink {
         private final String username;
         private final String password;
         private transient CredentialsProvider credentialsProvider;
+        private boolean allowInsure;
 
         public AuthRestClientFactory(
-                @Nullable String pathPrefix, String username, String password) {
+                @Nullable String pathPrefix,
+                String username,
+                String password,
+                boolean allowInsure) {
             this.pathPrefix = pathPrefix;
             this.password = password;
             this.username = username;
+            this.allowInsure = allowInsure;
         }
 
         @Override
@@ -255,9 +285,23 @@ final class Elasticsearch7DynamicSink implements DynamicTableSink {
                         AuthScope.ANY, new UsernamePasswordCredentials(username, password));
             }
             restClientBuilder.setHttpClientConfigCallback(
-                    httpAsyncClientBuilder ->
-                            httpAsyncClientBuilder.setDefaultCredentialsProvider(
-                                    credentialsProvider));
+                    httpAsyncClientBuilder -> {
+                        httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+                        if (allowInsure) {
+                            try {
+                                httpAsyncClientBuilder.setSSLContext(
+                                        SSLContexts.custom()
+                                                .loadTrustMaterial(TrustAllStrategy.INSTANCE)
+                                                .build());
+                            } catch (final NoSuchAlgorithmException
+                                    | KeyStoreException
+                                    | KeyManagementException ex) {
+                                throw new IllegalStateException(
+                                        "Unable to create custom SSL context", ex);
+                            }
+                        }
+                        return httpAsyncClientBuilder;
+                    });
         }
 
         @Override

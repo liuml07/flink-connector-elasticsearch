@@ -32,6 +32,7 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
 
+import static org.apache.flink.connector.elasticsearch.table.ElasticsearchConnectorOptions.ALLOW_INSECURE;
 import static org.apache.flink.streaming.connectors.elasticsearch.table.ElasticsearchConnectorOptions.BULK_FLUSH_BACKOFF_DELAY_OPTION;
 import static org.apache.flink.streaming.connectors.elasticsearch.table.ElasticsearchConnectorOptions.BULK_FLUSH_BACKOFF_MAX_RETRIES_OPTION;
 import static org.apache.flink.streaming.connectors.elasticsearch.table.ElasticsearchConnectorOptions.BULK_FLUSH_BACKOFF_TYPE_OPTION;
@@ -148,6 +149,10 @@ class ElasticsearchConfiguration {
 
     public Optional<String> getPathPrefix() {
         return config.getOptional(ElasticsearchConnectorOptions.CONNECTION_PATH_PREFIX);
+    }
+
+    public boolean isAllowInsecure() {
+        return config.getOptional(ALLOW_INSECURE).orElse(false);
     }
 
     @Override

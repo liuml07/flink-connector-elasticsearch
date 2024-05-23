@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static org.apache.flink.connector.elasticsearch.table.ElasticsearchConnectorOptions.ALLOW_INSECURE;
 import static org.apache.flink.connector.elasticsearch.table.ElasticsearchConnectorOptions.BULK_FLUSH_BACKOFF_DELAY_OPTION;
 import static org.apache.flink.connector.elasticsearch.table.ElasticsearchConnectorOptions.BULK_FLUSH_BACKOFF_MAX_RETRIES_OPTION;
 import static org.apache.flink.connector.elasticsearch.table.ElasticsearchConnectorOptions.BULK_FLUSH_BACKOFF_TYPE_OPTION;
@@ -118,6 +119,10 @@ class ElasticsearchConfiguration {
 
     public Optional<Duration> getSocketTimeout() {
         return config.getOptional(SOCKET_TIMEOUT);
+    }
+
+    public boolean isAllowInsecure() {
+        return config.getOptional(ALLOW_INSECURE).orElse(false);
     }
 
     public List<HttpHost> getHosts() {

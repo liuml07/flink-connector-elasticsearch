@@ -132,6 +132,13 @@ public class ElasticsearchConnectorOptions {
                             "The socket timeout (SO_TIMEOUT) for waiting for data or, put differently,"
                                     + "a maximum period inactivity between two consecutive data packets.");
 
+    public static final ConfigOption<Boolean> ALLOW_INSECURE =
+            ConfigOptions.key("connection.allow-insecure")
+                    .booleanType()
+                    .defaultValue(false)
+                    .withDescription(
+                            "Allows to bypass the certificates chain validation and connect to insecure network endpoints");
+
     public static final ConfigOption<String> FORMAT_OPTION =
             ConfigOptions.key("format")
                     .stringType()
