@@ -96,6 +96,10 @@ under the License.
 					<groupId>org.apache.httpcomponents</groupId>
 					<artifactId>httpcore-nio</artifactId>
 				</exclusion>
+				<exclusion>
+					<groupId>org.elasticsearch</groupId>
+					<artifactId>jna</artifactId>
+				</exclusion>
 			</exclusions>
 		</dependency>
 
